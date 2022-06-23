@@ -56,6 +56,18 @@ app.post("/participants", async (req, res) => {
   }
 });
 
+app.get("/participants", async (_, res) => {
+  try {
+    const listarParticipantes = await db
+      .collection("participantes")
+      .find()
+      .toArray();
+    res.send(listarParticipantes);
+  } catch (error) {
+    res.status(500).send();
+  }
+});
+
 app.listen(5000, () => {
   console.log(chalk.bold.blue("Servidor funcionando na porta 5000"));
 });
