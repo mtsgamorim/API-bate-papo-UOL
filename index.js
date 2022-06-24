@@ -34,7 +34,6 @@ app.post("/participants", async (req, res) => {
       .collection("participantes")
       .find(nomeUsuario)
       .toArray();
-    console.log(temUsuarioIgual);
     if (temUsuarioIgual.length !== 0) {
       res.status(409).send();
       return;
@@ -63,6 +62,63 @@ app.get("/participants", async (_, res) => {
       .find()
       .toArray();
     res.send(listarParticipantes);
+  } catch (error) {
+    res.status(500).send();
+  }
+});
+
+app.post("/messages", async (req, res) => {
+  const mensagemRecebida = req.body;
+  const user = req.headers.user;
+  const mensagemRecebidaSchema = joi.object({
+    to: joi.string().required(),
+    text: joi.string().required(),
+    type: joi.string().valid("message", "private_message").required(),
+  });
+  const validation = mensagemRecebidaSchema.validate(mensagemRecebida, {
+    abortEarly: false,
+  });
+  if (validation.error) {
+    res.status(422).send();
+    return;
+  }
+  try {
+    const usuarios = await db
+      .collection("participantes")
+      .find({ name: user })
+      .toArray();
+    if (!usuarios) {
+      res.status(422).send();
+      return;
+    }
+    db.collection("mensagens").insertOne({
+      from: user,
+      to: mensagemRecebida.to,
+      text: mensagemRecebida.text,
+      type: mensagemRecebida.type,
+      time: dayjs().format("HH:mm:ss"),
+    });
+  } catch (error) {
+    res.status(500).send();
+  }
+});
+
+app.get("/messages", async (req, res) => {
+  const limit = parseInt(req.query.limit);
+  const user = req.headers.user;
+  try {
+    const mensagens = await db.collection("mensagens").find().toArray();
+    const novasMensagens = mensagens.filter((mensagem) => {
+      const { from, to, type } = mensagem;
+      const validacao =
+        to === user || from === user || to === "Todos" || type === "message";
+      return validacao;
+    });
+    if (limit && limit !== NaN) {
+      res.send(novasMensagens.slice(-limit));
+    }
+
+    res.send(novasMensagens);
   } catch (error) {
     res.status(500).send();
   }
