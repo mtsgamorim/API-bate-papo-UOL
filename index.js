@@ -124,6 +124,27 @@ app.get("/messages", async (req, res) => {
   }
 });
 
+app.post("/status", async (req, res) => {
+  const user = req.headers.user;
+  try {
+    const participantes = await db
+      .collection("participantes")
+      .findOne({ name: user });
+    if (participantes.length === 0) {
+      res.status(404).send();
+      return;
+    }
+    await db
+      .collection("participantes")
+      .updateOne({ name: user }, { $set: { lastStatus: Date.now() } });
+    res.status(200).send();
+  } catch (error) {
+    res.status(500).send();
+  }
+});
+
+const TEMPO_15S = 15 * 1000;
+
 app.listen(5000, () => {
   console.log(chalk.bold.blue("Servidor funcionando na porta 5000"));
 });
