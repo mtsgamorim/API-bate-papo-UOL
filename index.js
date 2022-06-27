@@ -144,7 +144,32 @@ app.post("/status", async (req, res) => {
 });
 
 const TEMPO_15S = 15 * 1000;
-
+setInterval(async () => {
+  const tempoLimite = Date.now() - 10 * 1000;
+  try {
+    const participantes = await db
+      .collection("participantes")
+      .find({ lastStatus: { $lte: tempoLimite } })
+      .toArray();
+    if (participantes.length > 0) {
+      const mensagemSaida = participantes.map((pessoa) => {
+        return {
+          from: pessoa.name,
+          to: "Todos",
+          text: "sai da sala ...",
+          type: "status",
+          time: dayjs().format("HH:mm:ss"),
+        };
+      });
+      await db.collection("mensagens").insertMany(mensagemSaida);
+      await db
+        .collection("participantes")
+        .deleteMany({ lastStatus: { $lte: tempoLimite } });
+    }
+  } catch (error) {
+    res.status(500).send();
+  }
+}, TEMPO_15S);
 app.listen(5000, () => {
   console.log(chalk.bold.blue("Servidor funcionando na porta 5000"));
 });
